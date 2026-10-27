@@ -68,7 +68,7 @@ END $$;
 CREATE FUNCTION fk.fill_pattern(p_pattern text, p_prefix text, p_salt text)
 RETURNS text LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE AS $$
 DECLARE
-    v_n      integer := length(translate(p_pattern, '#N', '')) ;
+    v_n      integer;
     v_digits text;
     v_out    text    := '';
     v_pos    integer := 0;
@@ -91,16 +91,15 @@ BEGIN
 END $$;
 
 -- Lower-case ASCII slug for e-mail local parts.  p_src/p_dst are the
--- locale specific replacements from fk.translit (de: ä->ae, ß->ss); remaining
--- accented letters are stripped to their base letter.
+-- locale specific replacements from fk.translit (de: ä->ae, ß->ss) and are
+-- applied first; the remaining accents are removed with the standard
+-- unaccent extension (ř->r, ł->l, ...); everything that is not a-z / 0-9 is dropped.
 CREATE FUNCTION fk.slugify(p_text text, p_src text[], p_dst text[])
-RETURNS text LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE AS $$
+RETURNS text LANGUAGE plpgsql STABLE PARALLEL SAFE AS $$
 DECLARE s text := lower(p_text);
 BEGIN
     FOR i IN 1 .. coalesce(array_length(p_src, 1), 0) LOOP
         s := replace(s, p_src[i], p_dst[i]);
     END LOOP;
-    s := translate(s, 'àáâãäåāăąçćčďéèêëēėęěíìîïīłñńňóòôõöøōőřśšşťúùûüūůűýÿźżž',
-                      'aaaaaaaaacccdeeeeeeeeiiiiilnnnooooooooorsssstuuuuuuuyyzzz');
-    RETURN regexp_replace(s, '[^a-z0-9]', '', 'g');
+    RETURN regexp_replace(unaccent(s), '[^a-z0-9]', '', 'g');
 END $$;

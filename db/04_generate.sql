@@ -3,8 +3,6 @@
 --  Every attribute generator is a small function of (key prefix, inputs);
 --  fk.generate_range() wires them together.
 -- =====================================================================
-CREATE TYPE fk.name_parts AS (first_name text, last_name text, full_name text);
-
 -- 'M' or 'F' with equal probability.
 CREATE FUNCTION fk.gen_gender(p_prefix text)
 RETURNS char LANGUAGE sql IMMUTABLE PARALLEL SAFE AS $$
@@ -28,7 +26,7 @@ $$;
 -- and a domain.  Tokens: {first} {last} {f} {l} {nn} {yy}.
 CREATE FUNCTION fk.gen_email(p_prefix text, p_pattern text, p_domain text, p_first text, p_last text,
                              p_src text[] DEFAULT '{}', p_dst text[] DEFAULT '{}')
-RETURNS text LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE AS $$
+RETURNS text LANGUAGE plpgsql STABLE PARALLEL SAFE AS $$
 DECLARE
     v_f text := fk.slugify(p_first, p_src, p_dst);
     v_l text := fk.slugify(p_last,  p_src, p_dst);
@@ -43,18 +41,19 @@ END $$;
 -- Height (cm) and weight (kg): normal distributions.
 -- Weight is correlated with height (rho = 0.5):
 --    zw = rho * zh + sqrt(1 - rho^2) * z2        (zw is still exactly N(0,1))
--- values are cut at +-4 sigma and rounded to 0.1.
+-- values are cut at +-4 sigma and rounded to whole cm / kg (a finer
+-- resolution would be meaningless: a person's height changes by ~1 cm during a day).
 CREATE FUNCTION fk.gen_body(p_prefix text,
                             p_height_mean double precision, p_height_sd double precision,
                             p_weight_mean double precision, p_weight_sd double precision,
-                            OUT height_cm numeric, OUT weight_kg numeric)
+                            OUT height_cm integer, OUT weight_kg integer)
 LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE AS $$
 DECLARE
     zh double precision := fk.rand_normal(p_prefix, 'height', 0, 1);
     zw double precision := 0.5 * zh + sqrt(0.75) * fk.rand_normal(p_prefix, 'weight', 0, 1);
 BEGIN
-    height_cm := round((p_height_mean + p_height_sd * greatest(-4, least(4, zh)))::numeric, 1);
-    weight_kg := round((p_weight_mean + p_weight_sd * greatest(-4, least(4, zw)))::numeric, 1);
+    height_cm := round(p_height_mean + p_height_sd * greatest(-4, least(4, zh)))::integer;
+    weight_kg := round(p_weight_mean + p_weight_sd * greatest(-4, least(4, zw)))::integer;
 END $$;
 
 -- Generates users with in-batch index first_idx .. first_idx + count - 1.

@@ -75,7 +75,7 @@ footer{color:var(--muted);font-size:13px;padding:20px 0 40px}
    <div><button id="csv">Export CSV</button> <button id="json">JSON</button></div></div>
  </section>
  <section class="card tablecard"><div class="scroll"><table>
-  <thead><tr><th>#</th><th>Name</th><th>Address</th><th>Location (lat, lon)</th><th class="num">Height</th><th class="num">Weight</th><th>Eyes</th><th>Phone</th><th>E-mail</th></tr></thead>
+  <thead><tr><th>#</th><th>Name</th><th>Address</th><th>Location (lat, lon)</th><th class="num">Height (cm)</th><th class="num">Weight (kg)</th><th>Eyes</th><th>Phone</th><th>E-mail</th></tr></thead>
   <tbody id="rows"></tbody></table></div><div id="err" class="err" hidden></div></section>
  <footer>Same locale + seed + batch always returns the same users. Generation happens in PostgreSQL (schema <code>fk</code>); this page only renders it.</footer>
 </div></main>
@@ -110,8 +110,8 @@ function render(d){
    <td data-l="Name"><span class="g ${u.gender}" title="${u.gender==='M'?'male':'female'}">${u.gender}</span>${esc(u.full_name)}</td>
    <td data-l="Address">${esc(u.address)}</td>
    <td class="mono" data-l="Location"><a target="_blank" rel="noopener" href="https://www.openstreetmap.org/?mlat=${u.latitude}&mlon=${u.longitude}#map=4/${u.latitude}/${u.longitude}">${coord(u.latitude,'N','S')}, ${coord(u.longitude,'E','W')}</a></td>
-   <td class="num mono" data-l="Height">${u.height_cm.toFixed(1)} cm</td>
-   <td class="num mono" data-l="Weight">${u.weight_kg.toFixed(1)} kg</td>
+   <td class="num mono" data-l="Height, cm">${u.height_cm}</td>
+   <td class="num mono" data-l="Weight, kg">${u.weight_kg}</td>
    <td data-l="Eyes">${esc(u.eye_color)}</td>
    <td class="mono" data-l="Phone">${esc(u.phone)}</td>
    <td data-l="E-mail">${esc(u.email)}</td></tr>`).join('');

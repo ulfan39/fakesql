@@ -62,8 +62,6 @@ def users(locale: str = Query("en_US", max_length=16), seed: str = Query("1", ma
         rows = c.execute("SELECT * FROM fk.generate_users(%s, %s, %s, %s)", (locale, seed_int, batch, size)).fetchall()
         t1 = c.execute("SELECT clock_timestamp() AS t").fetchone()["t"]
     for r in rows:
-        for k in ("height_cm", "weight_kg"):
-            r[k] = float(r[k])
         r["gender"] = r["gender"].strip()
     return {"locale": locale, "seed": seed, "seed_value": seed_int, "batch": batch, "size": size,
             "users": rows, "db_ms": round((t1 - t0).total_seconds() * 1000, 1)}

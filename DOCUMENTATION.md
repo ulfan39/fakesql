@@ -37,7 +37,7 @@ Result columns of `fk.generate_users`:
 | `gender` | char(1) | `M` / `F` |
 | `address` | text | street, house number, optional unit, city, postcode, formatted per locale |
 | `latitude`, `longitude` | double | degrees, **uniformly distributed on the sphere** |
-| `height_cm`, `weight_kg` | numeric | normally distributed, correlated (rho = 0.5) |
+| `height_cm`, `weight_kg` | integer | whole cm / kg, normally distributed, correlated (rho = 0.5) |
 | `eye_color` | text | discrete, weighted per locale |
 | `phone` | text | several formats per locale |
 | `email` | text | built from the transliterated name, several patterns and domains |
@@ -133,7 +133,7 @@ All routines live in schema `fk`. `p_prefix` is the per-user key prefix returned
 | `pick_idx(cum[], u)` | weighted pick by **inverse transform sampling**: binary search for the first `cum[i] > u`, O(log n) |
 | `render(pattern, keys[], vals[])` | replaces `{key}` placeholders |
 | `fill_pattern(pattern, prefix, salt)` | fills digit masks (`#` 0-9, `N` 2-9) |
-| `slugify(text, src[], dst[])` | lower-case ASCII for e-mail: locale replacements first (`ä`->`ae`), then accents are stripped, everything else removed |
+| `slugify(text, src[], dst[])` | lower-case ASCII for e-mail: locale replacements first (`ä`->`ae`), then the standard PostgreSQL `unaccent` extension strips the remaining accents (`ř`->`r`, `ł`->`l`), everything else is removed |
 
 ### 3.3 Attribute generators and public API (`db/04_generate.sql`)
 
@@ -201,7 +201,7 @@ z2 = N(0,1)            weight  = w_mean + w_sd * (rho*zh + sqrt(1-rho^2)*z2)    
 ```
 
 `rho*zh + sqrt(1-rho^2)*z2` is again exactly `N(0,1)`, so both marginals stay normal and corr(height, weight) = 0.5.
-Values are cut at +-4 sigma and rounded to 0.1. Means and standard deviations come from `fk.body_stats` per locale and gender
+Values are cut at +-4 sigma and rounded to **whole centimetres and kilograms** (a finer resolution would be meaningless: a person's height already changes by about 1 cm during a day). Means and standard deviations come from `fk.body_stats` per locale and gender
 (e.g. de_DE men: 180.3 cm / 7.2, 85.0 kg / 12.5).
 
 ### 4.4 Weighted choice (names, cities, patterns, eye colours)
@@ -213,7 +213,7 @@ Pools are loaded once per `generate_users` call, so the per-user cost does not i
 ### 4.5 Names, e-mail and locale specific details
 
 * Name variations come from patterns; examples: `Dr. Anna Maria Schmidt`, `Mr. David Antonio Juarez`, `Hellwig, Irmhild`, `Maximilian Weber-Koch`.
-* E-mail local parts are built from the transliterated name: `Jähn` -> `jaehn`, `Gómez` -> `gomez`, so addresses are valid ASCII.
+* E-mail local parts are built from the transliterated name: `Jähn` -> `jaehn`, `Gómez` -> `gomez`, `Dvořák` -> `dvorak`, so addresses are valid ASCII. The `unaccent` extension is installed by `db/01_schema.sql` (`CREATE EXTENSION IF NOT EXISTS unaccent`).
 * German street types are glued to the base word (`Goethe`+`straße`), English types are separate words.
 
 ---
@@ -252,7 +252,7 @@ No routine has to be changed.
 | chi-square of sin(latitude) in 10 bins | 4.57 | < 16.92 (9 dof, 5 %) |
 | chi-square of longitude in 12 bins | 11.05 | < 19.68 (11 dof, 5 %) |
 | share of points with abs(latitude) > 60 deg | 13.26 % | 13.40 % for a uniform sphere (naive method: 33.33 %) |
-| height men: mean / sd | 175.4 / 7.59 | 175.3 / 7.6 |
+| height men: mean / sd | 175.4 / 7.60 | 175.3 / 7.6 |
 | height women: mean / sd | 161.5 / 7.11 | 161.5 / 7.1 |
 | weight men / women: mean / sd | 89.7 / 15.05, 77.0 / 15.06 | 89.7 / 15, 77.0 / 15 |
 | corr(height, weight) | 0.50 | 0.50 |

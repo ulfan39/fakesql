@@ -3,6 +3,9 @@
 --  01_schema.sql : schema, lookup tables, composite types
 --  Idempotent: safe to run again (drops and recreates the schema).
 -- =====================================================================
+-- unaccent: standard PostgreSQL extension, strips accents for e-mail addresses
+CREATE EXTENSION IF NOT EXISTS unaccent;
+
 DROP SCHEMA IF EXISTS fk CASCADE;
 CREATE SCHEMA fk;
 
@@ -87,8 +90,8 @@ CREATE TYPE fk.fake_user AS (
     address     text,
     latitude    double precision,
     longitude   double precision,
-    height_cm   numeric,
-    weight_kg   numeric,
+    height_cm   integer,            -- whole centimetres
+    weight_kg   integer,            -- whole kilograms
     eye_color   text,
     phone       text,
     email       text
